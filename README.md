@@ -1,3 +1,5 @@
+Joint model for intent detection and slot filling based on attention, input alignment and knowledge
+
 1.intent detection and slot filling joint model which share encoding information
 
 2.incorporate knowledge information with embedding for both intent detection and slot filling. this embedding share the same embedding space with slots output.
@@ -13,5 +15,8 @@ for intent detection, count how many number totally is marked as 1. in this case
 
 
 Reference:
-1.Attention-Based Recurrent Neural Network Models for Joint Intent Detection and Slot Filling,https://arxiv.org/pdf/1609.01454.pdf
-2.阿里AI Labs王刚解读9小时卖出百万台的“天猫精灵” | 高山大学（GASA）,http://www.sohu.com/a/206109679_473283
+1.Attention-Based Recurrent Neural Network Models for Joint Intent Detection and Slot Filling,
+https://arxiv.org/pdf/1609.01454.pdf
+
+2.阿里AI Labs王刚解读9小时卖出百万台的“天猫精灵” | 高山大学（GASA）,
+http://www.sohu.com/a/206109679_473283
