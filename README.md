@@ -1,23 +1,16 @@
-# slot_filling_intent_joint_model
-attention based joint model for intent detection and slot filling 
+1.intent detection and slot filling joint model which share encoding information
 
-包含：
-1）共享encodig信息的slot intent联合模型、
+2.incorporate knowledge information with embedding for both intent detection and slot filling. this embedding share the same embedding space with slots output.
 
-2）使用mulit-hot表示的知识编码、
+3.use bi-direction RNN and CNN to do intent detection
 
-3）结合CNN和RNN的意图识别
+4.use slots middle output as a feature for intent detection to boost performance
 
-4)  使用slots任务输出作为intent的一个特征，提高效果。Toy task: 5000步后loss从0.73降低到0.53
+5.toy task: input a sequence of natural number, such as [5,7,2,6,8,3].
+for slot filling: count label each number to 0 or 1. if sum of a number together with its previous and next number is great than a threshold(such as 14), we mark it as 1. otherwise 0.
+in this case, output of slot filling will be:[0,0,1,1,1,0]
+for intent detection, count how many number totally is marked as 1. in this case, output of intent will be:3.
 
-4）在toy task上的训练和测试方法。
-Toy task: 输入一串数字，如：【5，7，2，6，8，3】
-槽填充部分：将附近元素（元素左边、自己和右边）之和大于15的标记为1，否则标记为0；
-意图识别部分(intent),找出符合条件的元素的总个数。
-
-使用:
-训练：train()
-预测：predict()
 
 Reference:
 1.Attention-Based Recurrent Neural Network Models for Joint Intent Detection and Slot Filling,https://arxiv.org/pdf/1609.01454.pdf
