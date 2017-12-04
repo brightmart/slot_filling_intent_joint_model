@@ -21,6 +21,9 @@ Usage:
 
 2.test the model: predict() of a1_joint_intent_slots_model.py
 
+![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/JOINT_MODEL.JPG)
+
+
 Reference:
 -------------------------------------------------------------------------------------
 1.Attention-Based Recurrent Neural Network Models for Joint Intent Detection and Slot Filling,
