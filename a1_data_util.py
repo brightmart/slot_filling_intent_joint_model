@@ -62,6 +62,26 @@ def generate_training_data(data_file,knowledge_path,test_mode=False,vocabulary_s
 
     return result
 
+def process_qa(file_name,word2id_x,sequence_length):
+    #1.read qa file
+    source_file_object=codecs.open(file_name,mode='r',encoding='utf-8')
+    lines=source_file_object.readlines()
+    #2.put to dict:q2a,a2q;q_list
+    q2a_dict={}
+    a2q_dict={}
+    q_list=[]
+    q_list_index=[]
+    for i,line in enumerate(lines):
+        question,answer=line.strip().split(splitter)
+        q2a_dict[question]=answer
+        a2q_dict[answer]=question
+        q_list.append(question)
+        # 3.process qa as list of index, so later it can be feed
+        question_index= index_sentence_with_vocabulary(question, word2id_x, sequence_length=sequence_length)
+        q_list_index.append(question_index)
+    print("process_qa.total length:",len(lines),";length of q_list_index:",len(q_list_index))
+    return q2a_dict,a2q_dict,q_list,q_list_index
+
 def generate_raw_data(source_file_name,test_mode=False,knowledge_path=None):
     #1.read file
     source_file_object=codecs.open(source_file_name,'r','utf-8')
@@ -83,7 +103,7 @@ def generate_raw_data(source_file_name,test_mode=False,knowledge_path=None):
     target_file=knowledge_path+'/raw_data.txt'
     target_object=codecs.open(target_file,'w','utf-8')
     for k,v in result_dict.items():
-        target_object.write(k+splitter+v['intent']+splitter+str(v)+"\n")
+        target_object.write(k+splitter+v['intent']+"\n") #+splitter+str(v)+
     target_object.close()
 
     return result_dict
@@ -127,12 +147,12 @@ sline='{"dialog_template_id": "症状自查_缺槽_三症状_三症状关联__2c
       '{"intent": "你是否还有以下不适，请选择：<关联症状1>，<关联症状2>，还是<关联症状3>，其他不适请说明", "actor": "a", "speech": "你是否还有以下不适，请选择：冲动毁物，维生素D中毒，还是静脉内持续性血流，其他不适请说明", "slots": [{"value": "冲动毁物", "start": 14, "name": "关联症状1"}, {"value": "维生素D中毒", "start": 19, "name": "关联症状2"}, {"value": "静脉内持续性血流", "start": 28, "name": "关联症状3"}], "target": "u"}, ' \
       '{"intent": "<症状1>有的，也<症状2>，还<症状3>", "actor": "u", "speech": "啤酒肚脚后跟裂和指甲易碎我都有", "slots": [{"value": "啤酒肚", "svd_name": "shared/症状词", "start": 0, "name": "症状1"}, {"value": "脚后跟裂", "svd_name": "shared/症状词", "start": 3, "name": "症状2"}, {"value": "指甲易碎", "svd_name": "shared/症状词", "start": 8, "name": "症状3"}], "target": "a"}, ' \
       '{"intent": "症状自查<主症状><关联症状><关联症状1><关联症状2><症状1><症状2>", "actor": "a", "slots": [{"value": "啤酒肚", "name": "主症状"}, {"value": "脚后跟裂", "name": "症状1"}, {"value": "指甲易碎", "name": "症状2"}, {"value": "啤酒肚", "name": "关联症状"}, {"value": "脚后跟裂", "name": "关联症状1"}, {"value": "指甲易碎", "name": "关联症状2"}], "target": "s"}, {"intent": "症状自查的应答", "actor": "s", "slots": [{"value": "成功", "svd_name": "状态2", "name": "状态"}, {"value": "肉芽肿性前列腺炎", "svd_name": "shared/疾病名称", "name": "疾病名称"}, {"value": "[digits]", "svd_name": "百分比", "name": "诊断可能性"}], "target": "a"}]}'
-result=generate_raw_data_singel(sline)
-print("result:",result)
+#result=generate_raw_data_singel(sline)
+#print("result:",result)
 
-sline=''
-result=generate_raw_data_singel(sline)
-print("result:",result)
+#sline=''
+#result=generate_raw_data_singel(sline)
+#print("result:",result)
 def get_training_valid_test_data(data_dict,word2id_x,sequence_length,word2id_intent,word2id_slotname):
     """
     generate training,validation and test data.
@@ -293,6 +313,11 @@ def tokenize_sentence(sentence,knowledge_path=None):
         seg_sentence = " ".join(result_object)
         result_list = seg_sentence.split()
 
+        #seg_sentence_list=[]
+        #for i,element in enumerate(sentence):
+        #    if u'\u4e00' <= element <= u'\u9fff':#chinese
+        #        seg_sentence_list.append(element)
+        #result_list.extend(seg_sentence_list)
     except:
         print("tokenize_sentence.error:",sentence)
     return result_list

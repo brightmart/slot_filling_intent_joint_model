@@ -44,6 +44,9 @@ word2id_slotname = create_or_load_vocabulary_slotname_save(None,FLAGS.knowledge_
 id2word_slotname = {value: key for key, value in word2id_slotname.items()}
 knowledge_dict=load_knowledge(FLAGS.knowledge_path)
 
+basic_pair=FLAGS.knowledge_path+'/raw_data.txt'
+q2a_dict,a2q_dict,q_list,q_list_index=process_qa(basic_pair,word2id,FLAGS.sequence_length)
+
 intent_num_classes=len(word2id_intent)
 vocab_size=len(word2id)
 slots_num_classes=len(id2word_slotname)
@@ -55,7 +58,7 @@ FLAGS.batch_size = 1
 sequence_length_batch = [FLAGS.sequence_length] * FLAGS.batch_size
 model = joint_knowledge_model(intent_num_classes, FLAGS.learning_rate, FLAGS.decay_steps, FLAGS.decay_rate,
                           FLAGS.sequence_length, vocab_size, FLAGS.embed_size, FLAGS.hidden_size,
-                          sequence_length_batch, slots_num_classes, FLAGS.is_training)
+                          sequence_length_batch, slots_num_classes, FLAGS.is_training,S_Q_len=len(q_list_index))
 # initialize Saver
 saver = tf.train.Saver()
 print('restoring Variables from Checkpoint!')
@@ -68,7 +71,7 @@ jieba.load_userdict(slot_values_file)
 def main(_):
     sentence=u'开灯' #u'帮我打开厕所的灯'
     #indices=[240, 277, 104, 274, 344, 259, 19, 372, 235, 338, 338, 338, 338, 338, 338] #[283, 180, 362, 277, 99, 338, 338, 338, 338, 338, 338, 338, 338, 338, 338] #u'帮我把客厅的灯打开'
-    intent,intent_logits, slots,slot_list=predict(sentence)
+    intent,intent_logits, slots,slot_list,similiarity_list_result=predict(sentence)
     print(sentence)
     print('intent:{},intent_logits:{}'.format(intent, intent_logits))
     #for slot_name,slot_value in slots.items():
@@ -88,10 +91,14 @@ def predict(sentence,enable_knowledge=1):
     sentence_indices=index_sentence_with_vocabulary(sentence,word2id,FLAGS.sequence_length,knowledge_path=FLAGS.knowledge_path)
     y_slots= get_y_slots_by_knowledge(sentence,FLAGS.sequence_length,enable_knowledge=enable_knowledge,knowledge_path=FLAGS.knowledge_path)
     print("predict.y_slots:",y_slots)
-    feed_dict = {model.x: np.reshape(sentence_indices,(1,FLAGS.sequence_length)),model.y_slots:np.reshape(y_slots,(1,FLAGS.sequence_length)),model.dropout_keep_prob:1.0}
-    logits_intent,logits_slots = sess.run([model.logits_intent,model.logits_slots], feed_dict)
-    intent,intent_logits,slots,slot_list=get_result(logits_intent,logits_slots,sentence_indices)
-    return intent,intent_logits,slots,slot_list
+    qa_list_length=len(q_list_index)
+    feed_dict = {model.x: np.reshape(sentence_indices,(1,FLAGS.sequence_length)),
+                 model.y_slots:np.reshape(y_slots,(1,FLAGS.sequence_length)),
+                 model.S_Q:np.reshape(q_list_index,(qa_list_length,FLAGS.sequence_length)), #should be:[self.S_Q_len, self.sentence_len]
+                 model.dropout_keep_prob:1.0}
+    logits_intent,logits_slots,similiarity_list = sess.run([model.logits_intent,model.logits_slots,model.similiarity_list], feed_dict) #similiarity_list:[1,None]
+    intent,intent_logits,slots,slot_list,similiarity_list_result=get_result(logits_intent,logits_slots,sentence_indices,similiarity_list)
+    return intent,intent_logits,slots,slot_list,similiarity_list_result
 
 def get_y_slots_by_knowledge(sentence,sequence_length,enable_knowledge=1,knowledge_path=None):
     """get y_slots using dictt.e.g. dictt={'slots': {'全部范围': '全', '房间': '储藏室', '设备名': '四开开关'}, 'user': '替我把储藏室四开开关全关闭一下', 'intent': '关设备<房间><全部范围><设备名>'}"""
@@ -129,9 +136,11 @@ def predict_interactive():
             question = sys.stdin.readline()
 
         #1.predict using quesiton
-        intent, intent_logits,slots,slot_list=predict(question,enable_knowledge=enable_knowledge)
+        intent, intent_logits,slots,slot_list,similiarity_list=predict(question,enable_knowledge=enable_knowledge)
         #2.print
         print('intent:{},intent_logits:{}'.format(intent, intent_logits))
+        #for i,similiarity in enumerate(similiarity_list):
+        #    print('i:{},similiarity:{}'.format(i, similiarity))
         #for slot_name, slot_value in slots.items():
         #    print('slot_name:{}-->slot_value:{}'.format(slot_name, slot_value))
         for i, element in enumerate(slot_list):
@@ -143,7 +152,8 @@ def predict_interactive():
         question = sys.stdin.readline()
 
 
-def get_result(logits_intent,logits_slots,sentence_indices):
+def get_result(logits_intent,logits_slots,sentence_indices,similiarity_list,top_number=3):
+    print("similiarity_list:",similiarity_list.shape)
     index_intent= np.argmax(logits_intent[0]) #index of intent
     intent_logits=logits_intent[0][index_intent]
     print("intent_logits:",index_intent)
@@ -161,7 +171,17 @@ def get_result(logits_intent,logits_slots,sentence_indices):
         if slot!=O and word!=PAD and word!=UNK:
             slots_dict[slot]=word
             slot_list.append((slot,word))
-    return intent,intent_logits,slots_dict,slot_list
+
+    #get top answer for the similiarity list.
+    similiarity_list_top = np.argsort(similiarity_list)[-top_number:]
+    similiarity_list_top = similiarity_list_top[::-1]
+    similiarity_list_result=[]
+    for k,index in enumerate(similiarity_list_top):
+        question=q_list[index]
+        answer=q2a_dict[question]
+        similiarity_list_result.append(answer)
+        print('similiarity.index:{} question:{}, answer:{}'.format(k,question, answer))
+    return intent,intent_logits,slots_dict,slot_list,similiarity_list_result
 
 if __name__ == "__main__":
     tf.app.run()

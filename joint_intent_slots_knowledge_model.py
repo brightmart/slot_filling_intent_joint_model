@@ -11,7 +11,8 @@ import os
 class joint_knowledge_model:
     def __init__(self, intent_num_classes, learning_rate, decay_steps, decay_rate, sequence_length,
                  vocab_size, embed_size,hidden_size, sequence_length_batch,slots_num_classes,is_training,
-                 initializer=tf.random_normal_initializer(stddev=0.1),clip_gradients=3.0,l2_lambda=0.0001,use_hidden_states_slots=True,filter_sizes=[1,2,3,4,5],num_filters=128):
+                 initializer=tf.random_normal_initializer(stddev=0.1),clip_gradients=3.0,l2_lambda=0.0001,use_hidden_states_slots=True,
+                 filter_sizes=[1,2,3,4,5],num_filters=128,S_Q_len=1):
         """init all hyperparameter here"""
         # set hyperparamter
         self.intent_num_classes = intent_num_classes
@@ -32,11 +33,15 @@ class joint_knowledge_model:
         self.filter_sizes=filter_sizes
         self.num_filters=num_filters
         self.num_filters_total = self.num_filters * len(filter_sizes)
+        self.S_Q_len = S_Q_len
 
         self.x = tf.placeholder(tf.int32, [None, self.sequence_length], name="x")
         self.y_slots = tf.placeholder(tf.int32, [None, self.sequence_length],name="y_slots")
         self.y_intent = tf.placeholder(tf.int32, [None],name="y_intent")
         self.input_knowledges = tf.placeholder(tf.int32, [None, self.sequence_length],name="input_knowledges")  #nput_knowledges
+
+        if self.S_Q_len>1:
+            self.S_Q = tf.placeholder(tf.int32, [self.S_Q_len, self.sequence_length], name="Standard_Queries") #标准问题的集合
 
         self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
         self.global_step = tf.Variable(0, trainable=False, name="Global_Step")
@@ -59,6 +64,8 @@ class joint_knowledge_model:
         correct_prediction_slot = tf.equal(tf.cast(self.predictions_slots, tf.int32),self.y_slots)  #[batch_size, self.sequence_length]
         self.accuracy_slot = tf.reduce_mean(tf.cast(correct_prediction_slot, tf.float32), name="accuracy_slot") # shape=()
         if not is_training:
+            if self.S_Q_len > 1:
+                self.similiarity_module()
             return
         self.loss_val = self.loss_seq2seq()
         self.train_op = self.train()
@@ -68,13 +75,12 @@ class joint_knowledge_model:
         # 1.word embedding
         embedded_words = tf.nn.embedding_lookup(self.Embedding,self.x)  # [None, self.sequence_length, self.embed_size]
         # 2.encode with bi-directional GRU
-        fw_cell =tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, state_is_tuple=True) #rnn_cell.LSTMCell
-        bw_cell =tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, state_is_tuple=True)
+        self.fw_cell =tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, state_is_tuple=True) #rnn_cell.LSTMCell
+        self.bw_cell =tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, state_is_tuple=True)
         #fw_cell = tf.contrib.rnn.DropoutWrapper(fw_cell, output_keep_prob=self.dropout_keep_prob);bw_cell = tf.contrib.rnn.DropoutWrapper(bw_cell, output_keep_prob=self.dropout_keep_prob)
-        bi_outputs, self.bi_state = tf.nn.bidirectional_dynamic_rnn(fw_cell, bw_cell, embedded_words, dtype=tf.float32,#sequence_length: size `[batch_size]`,containing the actual lengths for each of the sequences in the batch
+        bi_outputs, self.bi_state = tf.nn.bidirectional_dynamic_rnn(self.fw_cell, self.bw_cell, embedded_words, dtype=tf.float32,#sequence_length: size `[batch_size]`,containing the actual lengths for each of the sequences in the batch
                                                           sequence_length=self.sequence_length_batch, time_major=False, swap_memory=True)
         self.inputs_representation=tf.concat([bi_outputs[0],bi_outputs[1]],-1) #should be:[none, self.sequence_length,self.hidden_size*2]
-
         self.input_knowledges_embedding = tf.nn.embedding_lookup(self.Embedding_slot_label,self.y_slots) #[batch_size,sequence_length,hidden_size]
 
 
@@ -99,7 +105,6 @@ class joint_knowledge_model:
         return logits
 
 
-
     def inference_slot(self): #slot
         logits = [] #self.inputs_representation：[none, self.sequence_length,self.hidden_size*2]
         hidden_states_list=[]
@@ -115,6 +120,41 @@ class joint_knowledge_model:
         logits=tf.stack(logits,axis=1) #[none,sequence_length,slots_num_classes]
         self.hidden_states_slots=tf.stack(hidden_states_list,axis=1) #[none,sequence_length,hidden_size]
         return logits
+
+    def similiarity_module(self):
+        print("going thought similiarity module,%d" % self.S_Q_len)
+        query_standard_embedding = tf.nn.embedding_lookup(self.Embedding, self.S_Q)  # Shape:[None,sequence_length,embed_sz]
+        #query_standard_embedding = tf.multiply(query_standard_embedding,self.query_mask)  # Shape:[None,sent_len,embed_sz]
+        #query_standard_embedding = tf.reduce_sum(query_standard_embedding, axis=[1])  # Shape:[None,embed_sz]
+
+        # 2.encode with bi-directional GRU
+        with tf.variable_scope("similiarity_module"):
+            #fw_cell =tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, state_is_tuple=True) #rnn_cell.LSTMCell
+            #bw_cell =tf.nn.rnn_cell.BasicLSTMCell(self.hidden_size, state_is_tuple=True)
+            #fw_cell = tf.contrib.rnn.DropoutWrapper(fw_cell, output_keep_prob=self.dropout_keep_prob);bw_cell = tf.contrib.rnn.DropoutWrapper(bw_cell, output_keep_prob=self.dropout_keep_prob)
+            bi_outputs, bi_state = tf.nn.bidirectional_dynamic_rnn(self.fw_cell, self.bw_cell, query_standard_embedding, dtype=tf.float32,#sequence_length: size `[batch_size]`,containing the actual lengths for each of the sequences in the batch
+                                                              time_major=False, swap_memory=True)
+        query_representation=tf.concat([bi_outputs[0],bi_outputs[1]],-1) #should be:[none, self.sequence_length,self.hidden_size*2]
+
+        query_representation=tf.reduce_max(query_representation,axis=1) #[none,self.hidden_size*2]
+        inputs_representation=tf.reduce_max(self.inputs_representation,axis=1) #[none,self.hidden_size*2]
+
+        self.similiarity_list = self.cos_similiarity_vectorized(inputs_representation, query_representation) ##[1,None]
+
+    def cos_similiarity_vectorized(self,v,V):
+        """
+        cosine similiarity vectorized
+        v:[1,embed_sz],
+        V:[None,embed_sz]
+        """
+        print("cos_similiarity_vectorized.started.v:",v,";V:",V)
+        dot_product=tf.reduce_sum(tf.multiply(v, V),axis=1) #[1,None]
+        v1_norm=tf.sqrt(tf.reduce_sum(tf.pow(v,tf.constant(2.0)))) #scalar
+        v2_norm=tf.sqrt(tf.reduce_sum(tf.pow(V,tf.constant(2.0)),axis=1)) #[1,None]
+        v1_v2=tf.multiply(v1_norm,v2_norm) #[1,None]
+        cos=tf.divide(dot_product,v1_v2) #[1,None]
+        print("cos_similiarity_vectorized.ended.result:",cos)
+        return cos
 
     def conv_layer(self):
         dimension=self.inputs_representation.get_shape().as_list()[-1]
