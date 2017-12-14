@@ -33,3 +33,6 @@ https://arxiv.org/pdf/1609.01454.pdf
 2.阿里AI Labs王刚解读9小时卖出百万台的“天猫精灵” | 高山大学（GASA）,
 
 http://www.sohu.com/a/206109679_473283
+
+3.史上最全！阿里智能人机交互的核心技术解析 
+https://yq.aliyun.com/articles/277907?spm=5176.100244.teamhomeleft.54.SKEyCU
