@@ -15,6 +15,12 @@ for slot filling: count label each number to 0 or 1. if sum of a number together
 in this case, output of slot filling will be:[0,0,1,1,1,0]
 for intent detection, count how many number totally is marked as 1. in this case, output of intent will be:3.
 
+Performance:
+-------------------------------------------------------------------------------------
+|-----------|intent_tmall|intent_tmall(similiarity)|intent_alime|intent_alime(similiarity)|
+|Performance|95.37%|72.0%|93.0%|62.9%|
+
+
 Usage:
 -------------------------------------------------------------------------------------
 1.train the model: train() of a1_joint_intent_slots_model.py
