@@ -84,30 +84,34 @@ class joint_knowledge_model:
 
         self.input_knowledges_embedding = tf.nn.embedding_lookup(self.Embedding_slot_label,self.y_slots) #[batch_size,sequence_length,hidden_size]
 
-    def encoder_positional_bow(self):
+    def encoder(self):
         """ 1.Word embedding. 2.Encoder with GRU """
         # 1.word embedding
         embedded_words = tf.nn.embedding_lookup(self.Embedding,self.x)  #[None, self.sequence_length, self.embed_size]
         # 2.encode
         self.x_mask = tf.get_variable("x_mask", [self.sequence_length, 1],initializer=tf.constant_initializer(1.0))
         self.inputs_representation = tf.multiply(embedded_words, self.x_mask) #[None, self.sequence_length, self.embed_size]
-        self.input_knowledges_embedding = tf.nn.embedding_lookup(self.Embedding_slot_label,self.y_slots) #[None,sequence_length,hidden_size]
+        self.input_knowledges_embedding = tf.nn.embedding_lookup(self.Embedding_slot_label,self.y_slots) #[batch_size,sequence_length,hidden_size]
 
-    def encoder(self):
-        """ 1.Word embedding. 2.Encoder with GRU """
-        # 1.word embedding
-        inputs_embedded = tf.nn.embedding_lookup(self.Embedding,self.x)  #[None, self.sequence_length, self.embed_size]
-        self.x_mask = tf.get_variable("x_mask", [self.sequence_length, 1], initializer=tf.constant_initializer(1.0))
-        self.inputs_embedded=tf.multiply(inputs_embedded, self.x_mask)
-        # 2.encode
-        input_knowledges_embedding = tf.nn.embedding_lookup(self.Embedding_slot_label,self.y_slots) #[None,sequence_length,hidden_size]
-        self.input_knowledges_embedding= tf.multiply(input_knowledges_embedding, self.x_mask)
-        self.inputs_representation =inputs_embedded #TODO tf.concat([self.inputs_embedded,self.input_knowledges_embedding],axis=2) #[None, self.sequence_length, self.embed_size]
 
     def inference_intent(self): #intent
         with tf.variable_scope("hidden_layer"):
+            #self.hidden_states_slots:[none,sequence_length,hidden_size]
+            #if self.use_hidden_states_slots: #use hidden state of slots as additional features
+            #    features=tf.concat([self.hidden_states_slots,self.inputs_representation],axis=2) #[none,sequence_length,hidden_size*3]
+            #else:
+            #features=self.inputs_representation
+            #features = tf.concat([self.input_knowledges_embedding, self.inputs_representation],axis=2)  #TODO ADD [none,sequence_length,hidden_size*3]
             hidden_states=self.conv_layer()
-        logits = tf.matmul(hidden_states, self.W_projection_intent) + self.b_projection_intent #[none,intent_num_classes]
+            #inputs_representation=tf.reduce_max(self.inputs_representation,axis=1) #features[none,hidden_size*2]
+            input_knowledges=tf.reduce_max(self.input_knowledges_embedding,axis=2) #[batch_size,hidden_size]
+            input_knowledges=tf.layers.dense(input_knowledges,self.hidden_size,activation=tf.nn.tanh) #[none,hidden_size]
+            input_knowledges = tf.nn.dropout(input_knowledges,keep_prob=self.dropout_keep_prob)  # [None,num_filters_total]
+
+            features = tf.concat([hidden_states,input_knowledges ], axis=1)
+
+            #hidden_states=tf.layers.dense(cnn_feature,self.hidden_size,activation=tf.nn.tanh) #[none,hidden_size]
+        logits = tf.matmul(features, self.W_projection_intent) + self.b_projection_intent #[none,intent_num_classes]
         return logits
 
 
@@ -145,16 +149,6 @@ class joint_knowledge_model:
 
     def similiarity_module(self):
         print("going thought similiarity module,%d" % self.S_Q_len)
-        query_standard_embedded = tf.nn.embedding_lookup(self.Embedding, self.S_Q)  # Shape:[None,sequence_length,embed_sz]
-        query_standard_embedded= tf.multiply(query_standard_embedded, self.x_mask)
-
-        # 2.encode with positional bag of words
-        query_representation=tf.reduce_sum(query_standard_embedded,axis=1) #[none,self.embed_sz]
-        inputs_representation=tf.reduce_sum(self.inputs_embedded,axis=1) #[none,self.embed_sz]
-        self.similiarity_list = self.cos_similiarity_vectorized(inputs_representation, query_representation) ##[1,None]
-
-    def similiarity_module_postional_bow(self):
-        print("going thought similiarity module,%d" % self.S_Q_len)
         query_standard_embedding = tf.nn.embedding_lookup(self.Embedding, self.S_Q)  # Shape:[None,sequence_length,embed_sz]
 
         # 2.encode with positional bag of words
@@ -162,7 +156,6 @@ class joint_knowledge_model:
         query_representation=tf.reduce_sum(query_representation,axis=1) #[none,self.hidden_size*2]
         inputs_representation=tf.reduce_sum(self.inputs_representation,axis=1) #[none,self.hidden_size*2]
         self.similiarity_list = self.cos_similiarity_vectorized(inputs_representation, query_representation) ##[1,None]
-
 
     def cos_similiarity_vectorized(self,v,V):
         """
@@ -258,7 +251,7 @@ class joint_knowledge_model:
             self.W_projection_slot = tf.get_variable("W_projection_slot", shape=[self.hidden_size, self.slots_num_classes],initializer=self.initializer)  # [embed_size,label_size]
             self.b_projection_slot = tf.get_variable("b_projection_slot", shape=[self.slots_num_classes])
             # w projection is used for intent. intent_num_classes mean target side classes.
-            self.W_projection_intent = tf.get_variable("W_projection_intent", shape=[self.num_filters_total, self.intent_num_classes],initializer=self.initializer)  #[self.hidden_size,self.vocab_size]
+            self.W_projection_intent = tf.get_variable("W_projection_intent", shape=[self.num_filters_total+self.hidden_size, self.intent_num_classes],initializer=self.initializer)  #[self.hidden_size,self.vocab_size]
             self.b_projection_intent = tf.get_variable("b_projection_intent", shape=[self.intent_num_classes])
 
 

@@ -102,7 +102,7 @@ class joint_knowledge_model:
         # 2.encode
         input_knowledges_embedding = tf.nn.embedding_lookup(self.Embedding_slot_label,self.y_slots) #[None,sequence_length,hidden_size]
         self.input_knowledges_embedding= tf.multiply(input_knowledges_embedding, self.x_mask)
-        self.inputs_representation =inputs_embedded #TODO tf.concat([self.inputs_embedded,self.input_knowledges_embedding],axis=2) #[None, self.sequence_length, self.embed_size]
+        self.inputs_representation = tf.concat([self.inputs_embedded,self.input_knowledges_embedding],axis=2) #[None, self.sequence_length, self.embed_size]
 
     def inference_intent(self): #intent
         with tf.variable_scope("hidden_layer"):

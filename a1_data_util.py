@@ -82,7 +82,7 @@ def process_qa(file_name,word2id_x,sequence_length):
     print("process_qa.total length:",len(lines),";length of q_list_index:",len(q_list_index))
     return q2a_dict,a2q_dict,q_list,q_list_index
 
-def generate_raw_data(source_file_name,test_mode=False,knowledge_path=None):
+def generate_raw_data(source_file_name,test_mode=False,knowledge_path=None,target_file=None):
     #1.read file
     source_file_object=codecs.open(source_file_name,'r','utf-8')
     lines=source_file_object.readlines()
@@ -100,7 +100,8 @@ def generate_raw_data(source_file_name,test_mode=False,knowledge_path=None):
     print("generate_raw_data.length of result list:",len(result_dict))
 
     #save it to file system.
-    target_file=knowledge_path+'/raw_data.txt'
+    if target_file is None:
+        target_file=knowledge_path+'/raw_data.txt'
     target_object=codecs.open(target_file,'w','utf-8')
     for k,v in result_dict.items():
         target_object.write(k+splitter+v['intent']+"\n") #+splitter+str(v)+
@@ -136,17 +137,6 @@ def generate_raw_data_singel(sline):
     else:
         return None
 
-sline='{"dialog_template_id": "症状自查_缺槽_三症状_三症状关联__2c9081a45fb51534015fb810e9fd013f", "actions": [' \
-      '{"intent": "我有点不舒服", "actor": "u", "speech": "我身体不舒服", "slots": [], "target": "a"}, ' \
-      '{"intent": "请问你哪里不舒服呢，请告诉我症状哦", "actor": "a", "speech": "请问你哪里不舒服呢", "slots": [], "target": "u"}, ' \
-      '{"intent": "<症状1>、<症状2>还<症状3>", "actor": "u", "speech": "我有点头皮松垂，还有脚痒和暴饮暴食", "slots": [{"value": "头皮松垂", "svd_name": "shared/症状词", ' \
-        '"start": 3, "name": "症状1"}, {"value": "脚痒", "svd_name": "shared/症状词", "start": 10, "name": "症状2"}, {"value": "暴饮暴食", "svd_name": "shared/症状词", ' \
-        '"start": 13, "name": "症状3"}], "target": "a"}, ' \
-      '{"intent": "症状关联<主症状><症状关键词><症状关键词1>", "actor": "a", "slots": [{"value": "头皮松垂", "name": "主症状"}, {"value": "脚痒", "name": "症状关键词"}, {"value": "暴饮暴食", "name": "症状关键词1"}], "target": "s"}, ' \
-      '{"intent": "症状关联的应答", "actor": "s", "slots": [{"value": "成功", "svd_name": "状态", "name": "状态"}, {"value": "冲动毁物", "svd_name": "shared/症状词", "name": "关联症状1"}, {"value": "维生素D中毒", "svd_name": "shared/症状词", "name": "关联症状2"}, {"value": "静脉内持续性血流", "svd_name": "shared/症状词", "name": "关联症状3"}], "target": "a"}, ' \
-      '{"intent": "你是否还有以下不适，请选择：<关联症状1>，<关联症状2>，还是<关联症状3>，其他不适请说明", "actor": "a", "speech": "你是否还有以下不适，请选择：冲动毁物，维生素D中毒，还是静脉内持续性血流，其他不适请说明", "slots": [{"value": "冲动毁物", "start": 14, "name": "关联症状1"}, {"value": "维生素D中毒", "start": 19, "name": "关联症状2"}, {"value": "静脉内持续性血流", "start": 28, "name": "关联症状3"}], "target": "u"}, ' \
-      '{"intent": "<症状1>有的，也<症状2>，还<症状3>", "actor": "u", "speech": "啤酒肚脚后跟裂和指甲易碎我都有", "slots": [{"value": "啤酒肚", "svd_name": "shared/症状词", "start": 0, "name": "症状1"}, {"value": "脚后跟裂", "svd_name": "shared/症状词", "start": 3, "name": "症状2"}, {"value": "指甲易碎", "svd_name": "shared/症状词", "start": 8, "name": "症状3"}], "target": "a"}, ' \
-      '{"intent": "症状自查<主症状><关联症状><关联症状1><关联症状2><症状1><症状2>", "actor": "a", "slots": [{"value": "啤酒肚", "name": "主症状"}, {"value": "脚后跟裂", "name": "症状1"}, {"value": "指甲易碎", "name": "症状2"}, {"value": "啤酒肚", "name": "关联症状"}, {"value": "脚后跟裂", "name": "关联症状1"}, {"value": "指甲易碎", "name": "关联症状2"}], "target": "s"}, {"intent": "症状自查的应答", "actor": "s", "slots": [{"value": "成功", "svd_name": "状态2", "name": "状态"}, {"value": "肉芽肿性前列腺炎", "svd_name": "shared/疾病名称", "name": "疾病名称"}, {"value": "[digits]", "svd_name": "百分比", "name": "诊断可能性"}], "target": "a"}]}'
 #result=generate_raw_data_singel(sline)
 #print("result:",result)
 
@@ -389,7 +379,6 @@ def write_data_for_fasttext(training_array,target_file,test_file):
             i=i+1
         target_object.close()
         test_object.close()
-
 
 #data_source='knowledge/sht_20171125.txt'
 #traing_data, valid_data, test_data=generate_training_data(data_source)

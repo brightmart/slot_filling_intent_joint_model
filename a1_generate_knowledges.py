@@ -60,17 +60,18 @@ def get_knowledge(data_source_file,knowledge_path,test_mode=False):
     #1.write slot_value to file system
     #2.write slot_value-slot_name pair to file system
     #3.write total slot name to file systm
-    ii = 0
+    #ii = 0
     slot_values_file_object = codecs.open(slot_values_filee, 'w', 'utf-8')
     slot_value_name_pair_file_object=codecs.open(slot_value_name_pair_filee,'w','utf-8')
     slot_names_file_object=codecs.open(slot_names_filee,'w','utf-8')
 
     #if not os.path.exists(slot_value_name_pair_file) and not os.path.exists(slot_values_file) :
     for k, v in knowledge_dict.items():
-        slot_value_name_pair_file_object.write(k+splitter+splitter_slot_names.join(list(v))+"\n")
-        seg_value=str(100000) if len(k)==1 else str(2000)
-        slot_values_file_object.write(k+" "+seg_value+"\n")
-        ii = ii + 1
+        if len(k)<6: #only save short context
+            slot_value_name_pair_file_object.write(k+splitter+splitter_slot_names.join(list(v))+"\n")
+            seg_value=str(100000) if len(k)==1 else str(2000)
+            slot_values_file_object.write(k+" "+seg_value+"\n")
+        #ii = ii + 1
 
     slot_values_file_object.close()
     slot_value_name_pair_file_object.close()
