@@ -17,9 +17,9 @@ for intent detection, count how many number totally is marked as 1. in this case
 
 Performance:
 -------------------------------------------------------------------------------------
-|---intent_tmall--|---intent_tmall(similiarity)---|---intent_alime---|---intent_alime(similiarity)---|
+|---intent_tmall--|---intent_tmall(similiarity)---|---intent_alime---|---intent_alime(similiarity)---|---TextCNN---|---TextCNN(similiarity)---|
 
-|------95.37%-----|------72.0%--------------------|----93.0%---------|----62.9%----------------------|
+|------95.37%-----|------72.0%--------------------|----93.0%---------|----62.9%----------------------|----95.7.0%---------|----73.5%----------------------|
 
 
 Usage:
@@ -30,6 +30,9 @@ Usage:
 
 ![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/JOINT_MODEL.JPG)
 
+Conclude:
+-------------------------------------------------------------------------------------
+Different models can be used for intent detection and slots filling. Some model's performance is strong than others in some dataset, while other model's peformance is better in other dataset. So we need to do experiment using different model to get a better performance.
 
 Reference:
 -------------------------------------------------------------------------------------
