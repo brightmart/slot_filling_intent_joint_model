@@ -17,9 +17,9 @@ for intent detection, count how many number totally is marked as 1. in this case
 
 Performance:
 -------------------------------------------------------------------------------------
-|---intent_tmall--|---intent_tmall(similiarity)---|---intent_alime---|---intent_alime(similiarity)---|---TextCNN---|---TextCNN(similiarity)---|
+|---intent_tmall|---intent_tmall(similiarity)|---intent_alime|---intent_alime(similiarity)|---TextCNN---|---TextCNN(similiarity)|
 
-|------95.37%-----|------72.0%--------------------|----93.0%---------|----62.9%----------------------|----95.7.0%---------|----73.5%----------------------|
+|------95.37%|------72.0%-----------------|----93.0%------|----62.9%-----------------|----95.7.0%-------|----73.5%-------------|
 
 
 Usage:
