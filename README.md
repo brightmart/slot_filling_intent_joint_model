@@ -10,9 +10,12 @@ Introduction:
 
 4.use slots middle output as a feature for intent detection to boost performance
 
-5. detect domain using CNN, same structure as intent detection.
+5.domain detection is availabile by using CNN, same structure as intent detection. domain is a high level concept which indicates 
+area that intent(s) belongs to.
 
-6.toy task: input a sequence of natural number, such as [5,7,2,6,8,3].
+6.similiarity module is used to detect most similiar training data for any user input
+
+7.toy task: input a sequence of natural number, such as [5,7,2,6,8,3].
 for slot filling: count label each number to 0 or 1. if sum of a number together with its previous and next number is great than a threshold(such as 14), we mark it as 1. otherwise 0.
 in this case, output of slot filling will be:[0,0,1,1,1,0]
 for intent detection, count how many number totally is marked as 1. in this case, output of intent will be:3.
