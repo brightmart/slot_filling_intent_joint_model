@@ -87,7 +87,8 @@ just to make a comparision with V4 by not using any knowledge.
 
 V6(domain version)
 
-domain is predicted besides intent detection and slot filling.
+domain detection is predicted besides intent detection and slot filling.
+
 -----------------------------
 
 ![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/resources/JOINT_MODEL.JPG)
