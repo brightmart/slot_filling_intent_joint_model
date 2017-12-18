@@ -32,19 +32,27 @@ Usage:
 
 3. for model structure, you can check xxx_model.py
 
-Short Description for different versions:
+Description for different versions:
 -------------------------------------------------------------------------------------
-v0(seq2seq version): use TextCNN for intent, use encoder-decoder(seq2seq) model for slots. train() and predict() for toy task is available under a1_joint_intent_slots_model.py
+V0 (seq2seq version): use TextCNN for intent, use encoder-decoder(seq2seq) model for slots. train() and predict() for toy task is available under a1_joint_intent_slots_model.py
 
-v2(simplest model): the most simple model. use bi-directional GRU to encode input. this is share between intent detection and slots filling.
+-----------------------------
+V1 (naive version): 
+
+use bi-directional GRU to encode input. this is share between intent detection and slots filling.
 
 intent was predicted directically after fully connected layer based on sum up for different time step. 
 
 slots were predicted directically after fully connected layer for each time step.
 
-no knowledge is used.
+-----------------------------
+V2 (simple version): 
+add knowledge to naive version. knowledge is embedding, and used as additional feature to make prediction both for intent and slots.
+-----------------------------
 
-v3(p-bow,TextCNN,similiarity module): use positional bag of words to encoder input sentence. this is share between intent detection and slots filling.
+V3 (p-BOW,TextCNN,similiarity module): 
+
+use positional bag of words to encoder input sentence. this is share between intent detection and slots filling.
 
 TextCNN is used for intent detection. knowlege is embedded, transformed and used as feature together with output of TextCNN to make 
 
@@ -56,7 +64,24 @@ bag of words. this module is useful when you want to check similiar question or 
 
 you can get a prediction by simply use the intent(or called answer) for the most similiar question of the input sentence.
 
-v3:
+-----------------------------
+
+V4(Ali me style TextCNN):
+word embedding is concated with knowledge embedding to get better representation for each word. 'Hopefully' to capture additional 
+
+infomration that is relevant to make prediction. 
+
+other part is same as V3
+
+V5(TextCNN):
+
+just to make a comparision with V4 by not using any knowledge.
+-----------------------------
+
+V6(domain version)
+
+domain is predicted besides intent detection and slot filling.
+-----------------------------
 
 ![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/resources/JOINT_MODEL.JPG)
 
