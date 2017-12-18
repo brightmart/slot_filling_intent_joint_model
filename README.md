@@ -48,6 +48,7 @@ slots were predicted directically after fully connected layer for each time step
 -----------------------------
 V2 (simple version): 
 add knowledge to naive version. knowledge is embedding, and used as additional feature to make prediction both for intent and slots.
+
 -----------------------------
 
 V3 (p-BOW,TextCNN,similiarity module): 
@@ -73,9 +74,12 @@ infomration that is relevant to make prediction.
 
 other part is same as V3
 
+-----------------------------
+
 V5(TextCNN):
 
 just to make a comparision with V4 by not using any knowledge.
+
 -----------------------------
 
 V6(domain version)
