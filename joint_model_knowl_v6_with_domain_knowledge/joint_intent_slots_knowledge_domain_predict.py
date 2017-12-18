@@ -10,7 +10,7 @@ sys.setdefaultencoding('utf8')
 import tensorflow as tf
 import numpy as np
 import os
-from joint_intent_slots_knowledge_domain_model import joint_knowledge_domain_model
+from joint_intent_slots_knowledge_model import joint_knowledge_model
 from a1_data_util import *
 import math
 import pickle
@@ -43,8 +43,6 @@ word2id = create_or_load_vocabulary(None,FLAGS.knowledge_path)
 id2word = {value: key for key, value in word2id.items()}
 word2id_intent = create_or_load_vocabulary_intent(None,FLAGS.knowledge_path)
 id2word_intent = {value: key for key, value in word2id_intent.items()}
-word2id_domain= create_or_load_vocabulary_domain(None,FLAGS.knowledge_path)
-id2word_domain = {value: key for key, value in word2id_domain.items()}
 word2id_slotname = create_or_load_vocabulary_slotname_save(None,FLAGS.knowledge_path)
 id2word_slotname = {value: key for key, value in word2id_slotname.items()}
 knowledge_dict=load_knowledge(FLAGS.knowledge_path)
@@ -53,8 +51,6 @@ basic_pair=FLAGS.knowledge_path+'/raw_data.txt'
 q2a_dict,a2q_dict,q_list,q_list_index=process_qa(basic_pair,word2id,FLAGS.sequence_length)
 
 intent_num_classes=len(word2id_intent)
-domain_num_classes=len(word2id_domain)
-
 vocab_size=len(word2id)
 slots_num_classes=len(id2word_slotname)
 
@@ -63,9 +59,9 @@ config.gpu_options.allow_growth = True
 sess = tf.Session(config=config)
 FLAGS.batch_size = 1
 sequence_length_batch = [FLAGS.sequence_length] * FLAGS.batch_size
-model = joint_knowledge_domain_model(intent_num_classes, FLAGS.learning_rate, FLAGS.decay_steps, FLAGS.decay_rate,
+model = joint_knowledge_model(intent_num_classes, FLAGS.learning_rate, FLAGS.decay_steps, FLAGS.decay_rate,
                           FLAGS.sequence_length, vocab_size, FLAGS.embed_size, FLAGS.hidden_size,
-                          sequence_length_batch, slots_num_classes, FLAGS.is_training,domain_num_classes,S_Q_len=len(q_list_index))
+                          sequence_length_batch, slots_num_classes, FLAGS.is_training,S_Q_len=len(q_list_index))
 # initialize Saver
 saver = tf.train.Saver()
 print('restoring Variables from Checkpoint!')
@@ -78,9 +74,9 @@ jieba.load_userdict(slot_values_file)
 def main(_):
     sentence=u'开灯' #u'帮我打开厕所的灯'
     #indices=[240, 277, 104, 274, 344, 259, 19, 372, 235, 338, 338, 338, 338, 338, 338] #[283, 180, 362, 277, 99, 338, 338, 338, 338, 338, 338, 338, 338, 338, 338] #u'帮我把客厅的灯打开'
-    intent,intent_logits, slots,slot_list,similiarity_list_result,domain=predict(sentence)
+    intent,intent_logits, slots,slot_list,similiarity_list_result=predict(sentence)
     print(sentence)
-    print('intent:{},intent_logits:{},domain:{}'.format(intent, intent_logits,domain))
+    print('intent:{},intent_logits:{}'.format(intent, intent_logits))
     #for slot_name,slot_value in slots.items():
     #    print('slot_name:{},slot_value:{}'.format(slot_name, slot_value))
     for i,element in enumerate(slot_list):
@@ -105,7 +101,7 @@ def accuarcy_for_similiarity_validation_set():#read validation data from outside
     i=0
     for sentence,value in dict_pair.items():
         #3.call predict
-        intent, intent_logits, slots, slot_list, similiarity_list_result,domain = predict(sentence)
+        intent, intent_logits, slots, slot_list, similiarity_list_result = predict(sentence)
         y_intent_target=value['intent']
         similiar_intent=similiarity_list_result[0]
         if similiar_intent ==y_intent_target:
@@ -134,7 +130,7 @@ def accuarcy_for_similiarity_validation_setX(): #read cached validation data
         y_intent=y_intent_valid[i]
         sentence=get_sentence_from_index(x_indices)
         #3.call predict
-        intent, intent_logits, slots, slot_list, similiarity_list_result,model = predict(sentence)
+        intent, intent_logits, slots, slot_list, similiarity_list_result = predict(sentence)
         y_intent_target=id2word_intent[y_intent]
         similiar_intent=similiarity_list_result[0]
         if similiar_intent ==y_intent_target:
@@ -169,9 +165,9 @@ def predict(sentence,enable_knowledge=1):
                  model.y_slots:np.reshape(y_slots,(1,FLAGS.sequence_length)),
                  model.S_Q:np.reshape(q_list_index,(qa_list_length,FLAGS.sequence_length)), #should be:[self.S_Q_len, self.sentence_len]
                  model.dropout_keep_prob:1.0}
-    logits_intent,logits_slots,similiarity_list,logits_domain = sess.run([model.logits_intent,model.logits_slots,model.similiarity_list,model.logits_domain], feed_dict) #similiarity_list:[1,None]
-    intent,intent_logits,slots,slot_list,similiarity_list_result,domain=get_result(logits_intent,logits_slots,sentence_indices,similiarity_list,logits_domain)
-    return intent,intent_logits,slots,slot_list,similiarity_list_result,domain
+    logits_intent,logits_slots,similiarity_list = sess.run([model.logits_intent,model.logits_slots,model.similiarity_list], feed_dict) #similiarity_list:[1,None]
+    intent,intent_logits,slots,slot_list,similiarity_list_result=get_result(logits_intent,logits_slots,sentence_indices,similiarity_list)
+    return intent,intent_logits,slots,slot_list,similiarity_list_result
 
 def get_y_slots_by_knowledge(sentence,sequence_length,enable_knowledge=1,knowledge_path=None):
     """get y_slots using dictt.e.g. dictt={'slots': {'全部范围': '全', '房间': '储藏室', '设备名': '四开开关'}, 'user': '替我把储藏室四开开关全关闭一下', 'intent': '关设备<房间><全部范围><设备名>'}"""
@@ -181,7 +177,7 @@ def get_y_slots_by_knowledge(sentence,sequence_length,enable_knowledge=1,knowled
     if enable_knowledge=='1' or enable_knowledge==1:
         for i,word in enumerate(user_speech_tokenized):
             slot_name=knowledge_dict.get(word,None)
-            #print('i:{},word_index:{},word:{},slot_name:{}'.format(i,word,id2word.get(word,UNK),slot_name))
+            ##TODO print('i:{},word_index:{},word:{},slot_name:{}'.format(i,word,id2word.get(word,UNK),slot_name))
             if slot_name is not None:
                 try:
                     result[i]=word2id_slotname[slot_name]
@@ -210,31 +206,27 @@ def predict_interactive():
             question = sys.stdin.readline()
 
         #1.predict using quesiton
-        intent, intent_logits,slots,slot_list,similiarity_list,domain=predict(question,enable_knowledge=enable_knowledge)
+        intent, intent_logits,slots,slot_list,similiarity_list=predict(question,enable_knowledge=enable_knowledge)
         #2.print
-        print('意图:{},置信度:{}'.format(intent, intent_logits))
-        print('技能:{}'.format(domain))
+        print('intent:{},intent_logits:{}'.format(intent, intent_logits))
         #for i,similiarity in enumerate(similiarity_list):
         #    print('i:{},similiarity:{}'.format(i, similiarity))
-        for slot_name, slot_value in slots.items():
-            print('slot_name:{}-->slot_value:{}'.format(slot_name, slot_value))
-        #for i, element in enumerate(slot_list):
-         #   slot_name, slot_value = element
-         #   print('slot_name:{},slot_value:{}'.format(slot_name, slot_value))
+        #for slot_name, slot_value in slots.items():
+        #    print('slot_name:{}-->slot_value:{}'.format(slot_name, slot_value))
+        for i, element in enumerate(slot_list):
+            slot_name, slot_value = element
+            print('slot_name:{},slot_value:{}'.format(slot_name, slot_value))
         #3.read new input
         print("Please Input Story>")
         sys.stdout.flush()
         question = sys.stdin.readline()
 
 
-def get_result(logits_intent,logits_slots,sentence_indices,similiarity_list,logits_domain,top_number=3):
+def get_result(logits_intent,logits_slots,sentence_indices,similiarity_list,top_number=3):
     index_intent= np.argmax(logits_intent[0]) #index of intent
     intent_logits=logits_intent[0][index_intent]
     #print("intent_logits:",index_intent)
     intent=id2word_intent[index_intent]
-
-    index_domain=np.argmax(logits_domain[0]) #index of domain
-    domain=id2word_domain[index_domain]
 
     slots=[]
     indices_slots=np.argmax(logits_slots[0],axis=1) #[sequence_length]
@@ -253,13 +245,12 @@ def get_result(logits_intent,logits_slots,sentence_indices,similiarity_list,logi
     similiarity_list_top = np.argsort(similiarity_list)[-top_number:]
     similiarity_list_top = similiarity_list_top[::-1]
     similiarity_list_result=[]
-    print('最相关问题')
     for k,index in enumerate(similiarity_list_top):
         question=q_list[index]
         answer=q2a_dict[question]
         similiarity_list_result.append(answer)
-        print('问题{}：{}, intent:{}'.format(k,question, answer))
-    return intent,intent_logits,slots_dict,slot_list,similiarity_list_result,domain
+        print('similiarity.index:{} question:{}, answer:{}'.format(k,question, answer))
+    return intent,intent_logits,slots_dict,slot_list,similiarity_list_result
 
 if __name__ == "__main__":
     tf.app.run()

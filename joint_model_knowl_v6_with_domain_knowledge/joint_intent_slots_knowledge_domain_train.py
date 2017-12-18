@@ -7,7 +7,7 @@ sys.setdefaultencoding('utf8')
 import tensorflow as tf
 import numpy as np
 import os
-from joint_intent_slots_knowledge_domain_model import joint_knowledge_domain_model
+from joint_intent_slots_knowledge_model import joint_knowledge_model
 from a1_data_util import generate_training_data
 import jieba
 
@@ -44,7 +44,7 @@ def main(_):
     with tf.Session(config=config) as sess:
         # Instantiate Model
         sequence_length_batch=[FLAGS.sequence_length]*FLAGS.batch_size
-        model=joint_knowledge_domain_model(intent_num_classes, FLAGS.learning_rate, FLAGS.decay_steps, FLAGS.decay_rate, FLAGS.sequence_length,
+        model=joint_knowledge_model(intent_num_classes, FLAGS.learning_rate, FLAGS.decay_steps, FLAGS.decay_rate, FLAGS.sequence_length,
                  vocab_size, FLAGS.embed_size,FLAGS.hidden_size, sequence_length_batch,slots_num_classes,FLAGS.is_training,domain_num_classes)
         # Initialize Save
         saver = tf.train.Saver()
@@ -62,7 +62,7 @@ def main(_):
         best_eval_loss = 10000
         batch_size = FLAGS.batch_size
         for epoch in range(curr_epoch, FLAGS.num_epochs):
-            loss, acc_intent,acc_slot, acc_domain,counter = 0.0,0.0, 0.0, 0.0,0
+            loss, acc_intent,acc_slot, counter = 0.0,0.0, 0.0, 0
             for start, end in zip(range(0, number_of_training_data, batch_size),
                                   range(batch_size, number_of_training_data, batch_size)):
                 if epoch == 0 and counter == 0:#print sample to have a look
@@ -110,18 +110,16 @@ def main(_):
     pass
 
 # 在验证集上做验证，报告损失、精确度
-def do_eval(sess, model, x_valid, y_intent_valid, y_slots_valid,y_domain_valid, batch_size):
+def do_eval(sess, model, x_valid, y_intent_valid, y_slots_valid, batch_size):
     number_examples = len(x_valid)
-    eval_loss, eval_acc_intent,eval_acc_slot, eval_acc_domain,eval_counter = 0.0,0.0,0.0, 0.0, 0
+    eval_loss, eval_acc_intent,eval_acc_slot, eval_counter = 0.0,0.0, 0.0, 0
     for start, end in zip(range(0, number_examples, batch_size), range(batch_size, number_examples, batch_size)):
         feed_dict = {model.x: x_valid[start:end], model.dropout_keep_prob: 1.0}
         feed_dict[model.y_intent] = y_intent_valid[start:end]
-        feed_dict[model.y_domain] = y_domain_valid[start:end]
         feed_dict[model.y_slots] = y_slots_valid[start:end]
-        curr_eval_loss, curr_eval_acc_intent,curr_eval_acc_slot,curr_eval_acc_domain = sess.run([model.loss_val, model.accuracy_intent,model.accuracy_slot,model.accuracy_domain],feed_dict)
-        eval_loss, eval_acc_intent,eval_acc_slot,eval_acc_domain, eval_counter = eval_loss + curr_eval_loss, eval_acc_intent +curr_eval_acc_intent , \
-                                                                                 eval_acc_slot+curr_eval_acc_slot,eval_acc_domain+curr_eval_acc_domain,eval_counter + 1
-    return eval_loss / float(eval_counter), eval_acc_intent / float(eval_counter),eval_acc_slot / float(eval_counter),eval_acc_domain/float(eval_counter)
+        curr_eval_loss, curr_eval_acc_intent,curr_eval_acc_slot = sess.run([model.loss_val, model.accuracy_intent,model.accuracy_slot],feed_dict)
+        eval_loss, eval_acc_intent,eval_acc_slot, eval_counter = eval_loss + curr_eval_loss, eval_acc_intent +curr_eval_acc_intent , eval_acc_slot+curr_eval_acc_slot,eval_counter + 1
+    return eval_loss / float(eval_counter), eval_acc_intent / float(eval_counter),eval_acc_slot / float(eval_counter)
 
 if __name__ == "__main__":
     tf.app.run()
