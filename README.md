@@ -28,9 +28,9 @@ Usage:
 
 2.test the model: predict() of a1_joint_intent_slots_model.py
 
-![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/JOINT_MODEL.JPG)
+![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/resources/JOINT_MODEL.JPG)
 
-![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/TextCNN.JPG)
+![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/resources/TextCNN.JPG)
 
 Conclude:
 -------------------------------------------------------------------------------------
