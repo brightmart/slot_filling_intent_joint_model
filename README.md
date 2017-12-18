@@ -30,6 +30,8 @@ Usage:
 
 ![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/JOINT_MODEL.JPG)
 
+![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/TextCNN.JPG)
+
 Conclude:
 -------------------------------------------------------------------------------------
 Different models can be used for intent detection and slots filling. Some model's performance is strong than others in some dataset, while other model's peformance is better in other dataset. So we need to do experiment using different model to get a better performance.
