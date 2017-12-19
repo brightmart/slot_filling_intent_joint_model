@@ -85,9 +85,19 @@ just to make a comparision with V4 by not using any knowledge.
 
 -----------------------------
 
-V6(domain version)
+V6(+domain version)
 
 domain detection is predicted besides intent detection and slot filling.
+
+-----------------------------
+
+-----------------------------
+
+V7(+context window for slot filling)
+
+mainly change slot filling part: 1.word vector+symbol vector 2.context window 3.nolinear projection 4.bi-directional lstm
+
+for intent and domain detection, use representation from concat of word vector and symbol vector.
 
 -----------------------------
 
