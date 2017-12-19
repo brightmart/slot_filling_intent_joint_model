@@ -101,8 +101,6 @@ domain detection is predicted besides intent detection and slot filling.
 
 -----------------------------
 
------------------------------
-
 V7(+context window for slot filling)
 
 mainly change slot filling part: 1.word vector+symbol vector 2.context window 3.nolinear projection 4.bi-directional lstm
