@@ -79,11 +79,13 @@ def process_qa(file_name, word2id_x, sequence_length):
     q_list_index = []
     for i, line in enumerate(lines):
         question, answer = line.strip().split(splitter)
+        #print('question:{},answer:{}'.format(question, answer))
         q2a_dict[question] = answer
         a2q_dict[answer] = question
         q_list.append(question)
         # 3.process qa as list of index, so later it can be feed
         question_index = index_sentence_with_vocabulary(question, word2id_x, sequence_length=sequence_length)
+        #print('i:{},question_index:{}'.format(i, question_index))
         q_list_index.append(question_index)
     print("process_qa.total length:", len(lines), ";length of q_list_index:", len(q_list_index))
     return q2a_dict, a2q_dict, q_list, q_list_index

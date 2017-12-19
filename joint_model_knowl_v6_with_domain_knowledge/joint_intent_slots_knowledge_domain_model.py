@@ -8,14 +8,15 @@ import random
 import copy
 import os
 
-class joint_knowledge_model:
+class joint_knowledge_domain_model:
     def __init__(self, intent_num_classes, learning_rate, decay_steps, decay_rate, sequence_length,
-                 vocab_size, embed_size,hidden_size, sequence_length_batch,slots_num_classes,is_training,
+                 vocab_size, embed_size,hidden_size, sequence_length_batch,slots_num_classes,is_training,domain_num_classes,
                  initializer=tf.random_normal_initializer(stddev=0.1),clip_gradients=3.0,l2_lambda=0.0001,use_hidden_states_slots=True,
                  filter_sizes=[1,2,3,4,5],num_filters=128,S_Q_len=1):
         """init all hyperparameter here"""
         # set hyperparamter
         self.intent_num_classes = intent_num_classes
+        self.domain_num_classes=domain_num_classes
         self.sequence_length = sequence_length
         self.vocab_size = vocab_size
         self.embed_size = embed_size
@@ -38,6 +39,7 @@ class joint_knowledge_model:
         self.x = tf.placeholder(tf.int32, [None, self.sequence_length], name="x")
         self.y_slots = tf.placeholder(tf.int32, [None, self.sequence_length],name="y_slots")
         self.y_intent = tf.placeholder(tf.int32, [None],name="y_intent")
+        self.y_domain = tf.placeholder(tf.int32, [None], name="y_domain")
         self.input_knowledges = tf.placeholder(tf.int32, [None, self.sequence_length],name="input_knowledges")  #nput_knowledges
 
         if self.S_Q_len>1:
@@ -55,12 +57,17 @@ class joint_knowledge_model:
 
         self.logits_intent = self.inference_intent() #[none,intent_num_classes]
 
-        self.predictions_intent = tf.argmax(self.logits_intent, axis=1,name="predictions_intent")  # [batch_size]
-        self.predictions_slots = tf.argmax(self.logits_slots, axis=2, name="predictions_slots") #[batch_size,slots_num_classes]
+        self.logits_domain = self.inference_domain()  # [none,intent_num_classes]
 
+        self.predictions_intent = tf.argmax(self.logits_intent, axis=1,name="predictions_intent")  # [batch_size]
         correct_prediction_intent = tf.equal(tf.cast(self.predictions_intent, tf.int32),self.y_intent)  # [batch_size]
         self.accuracy_intent = tf.reduce_mean(tf.cast(correct_prediction_intent, tf.float32), name="accuracy_intent")  # shape=()
 
+        self.predictions_domain = tf.argmax(self.logits_domain, axis=1, name="predictions_domain")  # [batch_size]
+        correct_prediction_domain = tf.equal(tf.cast(self.predictions_domain, tf.int32), self.y_domain)  # [batch_size]
+        self.accuracy_domain = tf.reduce_mean(tf.cast(correct_prediction_domain, tf.float32),name="accuracy_domain")  # shape=()
+
+        self.predictions_slots = tf.argmax(self.logits_slots, axis=2, name="predictions_slots") #[batch_size,slots_num_classes]
         correct_prediction_slot = tf.equal(tf.cast(self.predictions_slots, tf.int32),self.y_slots)  #[batch_size, self.sequence_length]
         self.accuracy_slot = tf.reduce_mean(tf.cast(correct_prediction_slot, tf.float32), name="accuracy_slot") # shape=()
         if not is_training:
@@ -102,13 +109,19 @@ class joint_knowledge_model:
         # 2.encode
         input_knowledges_embedding = tf.nn.embedding_lookup(self.Embedding_slot_label,self.y_slots) #[None,sequence_length,hidden_size]
         self.input_knowledges_embedding= tf.multiply(input_knowledges_embedding, self.x_mask)
-        self.inputs_representation =inputs_embedded #TODO tf.concat([self.inputs_embedded,self.input_knowledges_embedding],axis=2) #[None, self.sequence_length, self.embed_size]
+        self.inputs_representation =self.inputs_embedded #TODO tf.concat([self.inputs_embedded,self.input_knowledges_embedding],axis=2) #[None, self.sequence_length, self.embed_size]
 
     def inference_intent(self): #intent
-        with tf.variable_scope("hidden_layer"):
+        with tf.variable_scope("hidden_layer_intent"):
             hidden_states=self.conv_layer()
         logits = tf.matmul(hidden_states, self.W_projection_intent) + self.b_projection_intent #[none,intent_num_classes]
         return logits
+
+    def inference_domain(self): #intent
+        with tf.variable_scope("hidden_layer_domain"): #some inference structure with intent, but parameters is not the same.
+            hidden_states=self.conv_layer()
+        logits_domain = tf.matmul(hidden_states, self.W_projection_domain) + self.b_projection_domain #[none,domain_num_classes]
+        return logits_domain
 
 
     def inference_slot(self): #slot
@@ -187,7 +200,7 @@ class joint_knowledge_model:
         # you can use:tf.nn.conv2d;tf.nn.relu;tf.nn.max_pool; feature shape is 4-d. feature is a new variable
         pooled_outputs = []
         for i, filter_size in enumerate(self.filter_sizes):
-            with tf.name_scope("convolution-pooling-%s" % filter_size):
+            with tf.variable_scope("convolution-pooling-%s" % filter_size):
                 # ====>a.create filter
                 filter = tf.get_variable("filter-%s" % filter_size,[filter_size, dimension, 1, self.num_filters],initializer=self.initializer)
                 # ====>b.conv operation: conv2d===>computes a 2-D convolution given 4-D `input` and `filter` tensors.
@@ -229,9 +242,14 @@ class joint_knowledge_model:
             loss_intent= tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.y_intent, logits=(self.logits_intent+self.epsilon())) #[batch_size].#A `Tensor` of the same shape as `labels`
             loss_intent=tf.reduce_mean(loss_intent) #scalar
 
+            loss_domain= tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.y_domain, logits=(self.logits_domain+self.epsilon())) #[batch_size].#A `Tensor` of the same shape as `labels`
+            loss_domain=tf.reduce_mean(loss_domain) #scalar
+
             l2_losses = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name]) * self.l2_lambda
-            weights_intent=tf.nn.sigmoid(tf.cast(self.global_step/1000,dtype=tf.float32))/2
-            loss = (1.0-weights_intent)*loss_slot+weights_intent*loss_intent + l2_losses
+            weights_intent=tf.nn.sigmoid(tf.cast(self.global_step/1000,dtype=tf.float32))/4        #0-0.25
+            weights_domain = tf.nn.sigmoid(tf.cast(self.global_step / 1000, dtype=tf.float32)) / 4 #0-0.25
+            weights=weights_intent+weights_domain
+            loss = (1.0-weights)*loss_slot+weights_intent*loss_intent+ weights_domain*loss_domain+ l2_losses #loss = (1.0-weights)*loss_slot+weights*loss_intent + l2_losses
             return loss
 
     def epsilon(self,dtype=tf.float32):
@@ -257,9 +275,14 @@ class joint_knowledge_model:
             # w projection slot is used for slot. slots_num_classes means how many slots name totally.
             self.W_projection_slot = tf.get_variable("W_projection_slot", shape=[self.hidden_size, self.slots_num_classes],initializer=self.initializer)  # [embed_size,label_size]
             self.b_projection_slot = tf.get_variable("b_projection_slot", shape=[self.slots_num_classes])
+
             # w projection is used for intent. intent_num_classes mean target side classes.
-            self.W_projection_intent = tf.get_variable("W_projection_intent", shape=[self.num_filters_total, self.intent_num_classes],initializer=self.initializer)  #[self.hidden_size,self.vocab_size]
+            self.W_projection_intent = tf.get_variable("W_projection_intent", shape=[self.num_filters_total, self.intent_num_classes],initializer=self.initializer)  #[self.hidden_size,self.intent_num_classes]
             self.b_projection_intent = tf.get_variable("b_projection_intent", shape=[self.intent_num_classes])
+
+            # w projection is used for domain. domain_num_classes mean target side classes.
+            self.W_projection_domain = tf.get_variable("W_projection_domain",shape=[self.num_filters_total, self.domain_num_classes],initializer=self.initializer)  # [self.hidden_size,self.domain_num_classes]
+            self.b_projection_domain = tf.get_variable("b_projection_domain", shape=[self.domain_num_classes])
 
 
 # test started: for slot_filling part,for each element,learn to predict whether its value with previous and next element(let's say,sub_sum) is great than a threshold;
