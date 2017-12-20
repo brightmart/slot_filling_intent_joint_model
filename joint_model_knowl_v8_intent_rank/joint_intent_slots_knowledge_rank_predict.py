@@ -10,7 +10,8 @@ sys.setdefaultencoding('utf8')
 import tensorflow as tf
 import numpy as np
 import os
-from joint_intent_slots_knowledge_domain_model import joint_knowledge_domain_model
+from joint_intent_slots_knowledge_rank_model import joint_knowledge_rank_model
+
 from a1_data_util import *
 import math
 import pickle
@@ -32,7 +33,7 @@ tf.app.flags.DEFINE_float("l2_lambda", 0.0001, "l2 regularization")
 
 tf.app.flags.DEFINE_boolean("enable_knowledge",True,"whether to use knwoledge or not.")
 tf.app.flags.DEFINE_string("knowledge_path","knowledge_67800","file for data source") #skill3_train_20171114.txt
-tf.app.flags.DEFINE_string("data_source","knowledge_67800/training_data _10w.txt","file for data source") #knowledge/sht_20171125.txt
+tf.app.flags.DEFINE_string("data_source","knowledge_67800/training_data_5000.txt","file for data source") #knowledge/sht_20171125.txt
 tf.app.flags.DEFINE_boolean("test_mode",False,"whether use test mode. if true, only use a small amount of data")
 
 tf.app.flags.DEFINE_string("validation_file","wzz_training_data_20171211_20w_validation.txt","validation file")
@@ -66,7 +67,7 @@ sequence_length_batch = [FLAGS.sequence_length] * FLAGS.batch_size
 
 S_Q_len=len(q_list_index)
 print("S_Q_len:",S_Q_len)
-model = joint_knowledge_domain_model(intent_num_classes, FLAGS.learning_rate, FLAGS.decay_steps, FLAGS.decay_rate,
+model = joint_knowledge_rank_model(intent_num_classes, FLAGS.learning_rate, FLAGS.decay_steps, FLAGS.decay_rate,
                           FLAGS.sequence_length, vocab_size, FLAGS.embed_size, FLAGS.hidden_size,
                           sequence_length_batch, slots_num_classes, FLAGS.is_training,domain_num_classes,S_Q_len=S_Q_len)
 # initialize Saver
