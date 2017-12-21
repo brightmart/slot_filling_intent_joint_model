@@ -108,6 +108,13 @@ mainly change slot filling part: 1.word vector+symbol vector 2.context window 3.
 for intent and domain detection, use representation from concat of word vector and symbol vector.
 
 -----------------------------
+V8(intent condition on domain; slot filling condition on intent)
+
+given a domain, intent is limit to a subset of total intents; given a intent, slot name is limited to a subset of total slot names. this model doing this
+
+by providing hidden states of domain together with other features before doing intent detection; it works similiar for slot filling.
+
+-----------------------------
 
 ![alt text](https://github.com/brightmart/slot_filling_intent_joint_model/blob/master/resources/JOINT_MODEL.JPG)
 
