@@ -108,7 +108,16 @@ def generate_raw_data(source_file_name, test_mode=False, knowledge_path=None, ta
     # print to have a look
     print("generate_raw_data.length of result list:", len(result_dict))
 
-    # save it to file system(for intent).
+     #if target_file is None:
+     #   target_file = knowledge_path + '/raw_data.txt'
+     #   if not os.path.exists(target_file):
+     ##       target_object = codecs.open(target_file, 'w', 'utf-8')
+     #       for k, v in result_dict.items():
+     #           if 'user_predict'  in v:
+     #               target_object.write(v['au_intent'] + splitter + v['user_predict'] + "\n")  # +splitter+str(v)+
+     #       target_object.close()
+
+    # save it to file system(for intent). #TODO remove temp to test recommendation function.
     if target_file is None:
         target_file = knowledge_path + '/raw_data.txt'
         if not os.path.exists(target_file):
@@ -136,6 +145,8 @@ def generate_raw_data_singel(sline):
         return None
     result = {}
     dialog_template_id = myjson['dialog_template_id']  # e.g. '医疗问诊__问诊_疾病概述__2c9081a4602b882801602b8b468d0055'
+    if 'mix' in dialog_template_id:
+        return None
     domain, real_intent = get_domain_and_real_intent(dialog_template_id)
     result['domain'] = domain
     result['real_intent'] = real_intent
@@ -156,6 +167,15 @@ def generate_raw_data_singel(sline):
             for i, element in enumerate(slots):
                 slot_dict[element['name']] = element['value']
             result['slots'] = slot_dict
+        if actor == 'a' and target == 'u' and i+1<len(elements) and elements[i+1]['actor']=='u' and  elements[i+1]['target']=='a':#if it is not in firs turn, and user_predict is empty.
+           if 'user_predict' not in result:
+               result['au_intent'] = elements[i]['intent']
+               result['user_predict'] = elements[i+1]['intent']
+
+        #if i!=0 and actor == 'u' and target == 'a': #if it is not in firs turn, and user_predict is empty.
+        #   if 'user_predict' not in result:
+        #       result['user_predict'] = intent
+
     if 'user' in result and 'intent' in result:
         return result
     else:

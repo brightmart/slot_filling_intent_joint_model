@@ -67,7 +67,7 @@ def get_knowledge(data_source_file,knowledge_path,test_mode=False):
 
     #if not os.path.exists(slot_value_name_pair_file) and not os.path.exists(slot_values_file) :
     for k, v in knowledge_dict.items():
-        if len(k)<6: #only save short context
+        if len(k)<=6: #only save short context
             slot_value_name_pair_file_object.write(k+splitter+splitter_slot_names.join(list(v))+"\n")
             seg_value=str(100000) if len(k)==1 else str(2000)
             slot_values_file_object.write(k+" "+seg_value+"\n")

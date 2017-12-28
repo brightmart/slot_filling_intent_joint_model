@@ -8,7 +8,7 @@ import random
 import copy
 import os
 
-class joint_knowledge_rank_model:
+class joint_knowledge_conditional_model:
     def __init__(self, intent_num_classes, learning_rate, decay_steps, decay_rate, sequence_length,
                  vocab_size, embed_size,hidden_size, sequence_length_batch,slots_num_classes,is_training,domain_num_classes,
                  initializer=tf.random_normal_initializer(stddev=0.1),clip_gradients=3.0,l2_lambda=0.0001,use_hidden_states_slots=True,
@@ -54,8 +54,17 @@ class joint_knowledge_rank_model:
         self.instantiate_weights()
         self.encoder_bi_directional_alime()
 
-        self.logits_domain = self.inference_domain() #[none,intent_num_classes]
+        self.logits_domain = self.inference_domain() #[none,domain_num_classes]
+        logits_domian_max=tf.reduce_max(self.logits_domain, axis=-1, keep_dims=True) #[none,domain_num_classes]
+        logits_domain_smooth = self.logits_domain - logits_domian_max
+        self.domain_scores=tf.nn.softmax(logits_domain_smooth)
+
         self.logits_intent = self.inference_intent() #[none,intent_num_classes]
+
+        logits_intent_max = tf.reduce_max(self.logits_intent, axis=-1, keep_dims=True)
+        logits_intent_smooth = self.logits_intent - logits_intent_max
+        self.intent_scores = tf.nn.softmax(logits_intent_smooth)
+
         self.logits_slots = self.inference_slot() #[none,sequence_length,slots_num_classes]
 
 
